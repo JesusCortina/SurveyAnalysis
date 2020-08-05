@@ -1,0 +1,84 @@
+---
+title: "Text Mining on Survey Answers"
+author: "JCB"
+date: "August 5, 2020"
+output: html_document
+---
+
+Getting the Libraries
+```{r}
+library(rio)
+library(tm)
+library(NLP)
+library(dplyr)
+library(wordcloud)
+library(RColorBrewer)
+library(anchors)
+library(readxl)
+```
+
+Creating the dataset
+```{r}
+Survey <- read_excel("C:/Users/Jesus/Desktop/Analytics/R/Projects/Survey.xlsx")
+View(Survey)
+```
+
+Why Column Analysis
+
+
+
+
+Converting the text of the columns into Corpus
+```{r}
+Why <- iconv(Survey$Why, to = "UTF-8")
+Why <- (VectorSource(Why))
+Why <- Corpus(Why)
+inspect(Why[1:5])
+```
+
+Cleaning the text
+```{r}
+CWhy <- tm_map(Why, tolower)
+CWhy <- tm_map(CWhy, removePunctuation)
+CWhy <- tm_map(CWhy, removeNumbers)
+CWhy <- tm_map(CWhy, removeWords, stopwords("english"))
+CWhy <- tm_map(CWhy, removeWords, c("crowddoing" ))
+CWhy <- tm_map(CWhy,stripWhitespace)
+CWhy <- tm_map(CWhy,gsub, pattern = "â???¦", replacement = "")
+head(CWhy)
+```
+
+
+Creating the TDM and removing duplicate counts
+```{r}
+MATWhy <- as.matrix(TermDocumentMatrix(CWhy))
+range(MATWhy)
+MATWhy2 <- data.frame(MATWhy)
+namesWhy <- colnames(MATWhy2)
+MATWhy3 <- replace.value(data = MATWhy2, names = namesWhy, from = 2, to = 1)
+MATWhy3 <- replace.value(data = MATWhy3, names = namesWhy, from = 3, to = 1)
+MATWhy3 <- replace.value(data = MATWhy3, names = namesWhy, from = 4, to = 1)
+MATWhy3 <- replace.value(data = MATWhy3, names = namesWhy, from = 5, to = 1)
+```
+
+Creating the WordCloud
+```{r}
+WhyWC <- rowSums(MATWhy3)
+head(WhyWC)
+WhyWC <- subset(WhyWC, WhyWC>=4)
+namesWhyWC <- names(WhyWC)
+FinalWhyWC <- data.frame(namesWhyWC, as.numeric(WhyWC))
+wordcloud(words = FinalWhyWC$namesWhyWC, freq = FinalWhyWC$as.numeric.WhyWC., max.words = 1000, random.order = FALSE, rot.per = 0, random.color= FALSE, colors = brewer.pal(n = length(FinalWhyWC$namesWhyWC), name = "BuPu"))
+```
+```
+
+Extracting the comments that contain the top words and creating an excel for the word counts
+```{r}
+TMW3 <- t(MATWhy3)
+TMW3 <- data.frame(TMW3)
+SkillsWC <- which(TMW3$skills >= 1)
+WhySkills <- Survey[as.numeric(SkillsWC),]
+export(WhySkills, "C:/Users/Jesus/Desktop/Analytics/R/Projects/AnswersWhySkills.xlsx")
+export(FinalWhyWC, "C:/Users/Jesus/Desktop/Analytics/R/Projects/WordsWhy.xlsx")
+```
+
